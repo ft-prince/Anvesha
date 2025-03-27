@@ -4,12 +4,15 @@
 
 :root {
   font-family: 'Poppins', sans-serif;
+  background-color: #40E0D0;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #40E0D0;
+
 }
 
 .loader {
