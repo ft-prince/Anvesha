@@ -1,38 +1,25 @@
+// components/stats/ScoreCard.jsx
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const ScoreCard = ({ score, label, color }) => {
+const ScoreCard = ({ score, label, color, textColor }) => {
   return (
-    <motion.div
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ 
-        type: "spring",
-        stiffness: 200,
-        damping: 20
-      }}
-      whileHover={{ 
-        scale: 1.05,
-        transition: { duration: 0.2 }
-      }}
-      className={`p-4 rounded-lg shadow-lg ${color} cursor-pointer`}
+    <motion.div 
+      className={`${color} rounded-lg p-4 shadow-md flex flex-col items-center justify-center`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
     >
-      <motion.h3 
-        className="text-xl font-bold"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        {label}
-      </motion.h3>
-      <motion.div 
-        className="text-3xl font-bold mt-2"
-        initial={{ scale: 0 }}
+      <motion.span 
+        className={`text-3xl font-bold ${textColor || 'text-gray-800'} mb-1`}
+        initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
       >
         {score}
-      </motion.div>
+      </motion.span>
+      <span className="text-sm font-medium text-gray-700">{label}</span>
     </motion.div>
   );
 };
