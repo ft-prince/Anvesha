@@ -107,14 +107,25 @@ function App() {
         transition={{ duration: 0.8, delay: 0.1 }}
         className="max-w-6xl mx-auto"
       >
-        <motion.h1 
-          className="text-4xl md:text-5xl font-bold mb-2 text-indigo-900 text-center"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        >
-          Anvesha
-        </motion.h1>
+    <div className="flex items-center justify-center gap-3 mb-2">
+      <motion.img 
+        src="/logo.png" 
+        alt="Anvesha Logo"
+        className="h-12 md:h-16" 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+      />
+      <motion.h1 
+        className="text-4xl md:text-5xl font-bold text-black"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+      >
+        Anvesha
+      </motion.h1>
+    </div>
+
         <motion.p 
           className="text-lg md:text-xl text-center mb-6 md:mb-8 text-indigo-600"
           initial={{ opacity: 0, y: -10 }}
