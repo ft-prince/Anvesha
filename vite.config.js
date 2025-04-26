@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   // Use VITE_API_URL from .env if available, otherwise default to localhost
-  const apiTarget = env.VITE_API_URL;
+  const apiTarget = 'https://anvesha-fact-checker.azurewebsites.net/';
 
   return {
     plugins: [react()],
