@@ -80,7 +80,7 @@ function App() {
     setError(null);
     
     try {
-      const response = await axios.post('/api/fact-check', {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/fact-check`, {
         query: queryText
       });
       

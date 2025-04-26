@@ -8,9 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   // Use VITE_API_URL from .env if available, otherwise default to localhost
-  const apiTarget = env.VITE_API_URL || 'http://localhost:8000';
-  const deepfakeTarget = env.VITE_DEEPFAKE_API_URL || 'http://localhost:8001';
-  const ttsTarget = env.VITE_TTS || 'http://localhost:8002';
+  const apiTarget = env.VITE_API_URL;
 
   return {
     plugins: [react()],
@@ -26,33 +24,8 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
           secure: false,
-        },
-        // Add proxy for deepfake API
-        '/deepfake-api': {
-          target: deepfakeTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/deepfake-api/, '/api')
-        },
-        // Add proxy for speech API
-        '/speech-api': {
-          target: ttsTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/speech-api/, '/api')
         }
       }
-    },
-    // Add this section to improve HTTPS handling
-    optimizeDeps: {
-      esbuildOptions: {
-        target: 'es2020'
-      }
-    },
-    build: {
-      target: 'es2020',
-      // Enable source maps for easier debugging
-      sourcemap: mode !== 'production'
     }
   };
 });

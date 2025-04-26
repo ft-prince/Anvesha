@@ -146,7 +146,7 @@ const VoiceAssistant = () => {
   // Fetch response from fact-checker agent API
   const fetchAgentResponse = async (queryText) => {
     try {
-      const response = await axios.post('/api/fact-check', {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/fact-check`, {
         query: queryText
       });
       
