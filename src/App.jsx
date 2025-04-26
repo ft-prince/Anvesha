@@ -7,6 +7,11 @@ import StatsSection from './components/stats/StatsSection';
 import FactGraph from './components/FactGraph';
 import FactCheckMeter from './components/stats/FactCheckMeter';
 import ClaimsList from './components/claims/ClaimsList';
+import AgentResponse from './components/AgentResponse';
+import VideoCheck from './components/VideoCheck';
+import ImageCheck from './components/ImageCheck';
+import SpeechButton from './components/SpeechButton';
+import VoiceAssistant from './components/VoiceAssistant';
 import axios from 'axios';
 
 function App() {
@@ -17,73 +22,88 @@ function App() {
     rating: 'all'
   });
   const [showTips, setShowTips] = useState(false);
-  const [activeTab, setActiveTab] = useState('text'); // 'text' or 'imageCheck'
-  const [inputMode, setInputMode] = useState('text'); // 'text' or 'imageCheck'
+  const [activeTab, setActiveTab] = useState('text'); // 'text', 'imageCheck', or 'videoCheck'
+  const [inputMode, setInputMode] = useState('text'); // 'text', 'imageCheck', or 'videoCheck'
   
-  // Image moderation states
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [moderationResult, setModerationResult] = useState(null);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  // Error state (shared)
   const [error, setError] = useState(null);
   
-  // API credentials for image moderation
-  const API_USER = '1526171324';
-  const API_SECRET = '5ycGES28LGNoMm38QipskYCQ5dzLnhPP';
+  // Agent response states
+  const [agentResponse, setAgentResponse] = useState(null);
+  const [agentVerdict, setAgentVerdict] = useState(null);
+  const [isAgentLoading, setIsAgentLoading] = useState(false);
+  const [sources, setSources] = useState([]);
+  const [confidence, setConfidence] = useState(null);
 
   const { factChecks, newsArticles, isLoading } = useFactCheck(query);
-  const filteredClaims = filterClaims(factChecks, filters);
+  const filteredClaims = factChecks ? filterClaims(factChecks, filters) : [];
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setInputMode('text');
     setQuery(searchInput);
-  };
-
-  // Handle image file selection
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      setModerationResult(null);
-      setError(null);
+    
+    // Only call the agent API if there's a valid search input
+    if (searchInput.trim()) {
+      fetchAgentResponse(searchInput);
+    } else {
+      // Clear agent response if search is cleared
+      setAgentResponse(null);
+      setAgentVerdict(null);
+      setSources([]);
+      setConfidence(null);
     }
   };
   
-  // Handle image moderation submission
-  const handleImageModeration = async (event) => {
-    event.preventDefault();
-    
-    if (!selectedFile) {
-      setError('Please select an image to upload');
-      return;
+  // Handle transcript from speech recognition
+  const handleTranscriptReceived = (transcript) => {
+    if (transcript && transcript.trim()) {
+      setSearchInput(transcript);
+      // Automatically trigger search after a short delay
+      setTimeout(() => {
+        handleSearch();
+      }, 500);
     }
-    
-    setIsProcessingImage(true);
-    
-    const formData = new FormData();
-    formData.append('media', selectedFile);
-    formData.append('models', 'genai');
-    formData.append('api_user', import.meta.env.VITE_API_USER);
-    formData.append('api_secret', import.meta.env.VITE_API_SECRET);
+  };
+  
+  // Fetch response from fact-checker agent API
+  const fetchAgentResponse = async (queryText) => {
+    setIsAgentLoading(true);
+    setAgentResponse(null);
+    setAgentVerdict(null);
+    setSources([]);
+    setConfidence(null);
+    setError(null);
     
     try {
-      const response = await axios.post(import.meta.env.VITE_API_IMAGE, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await axios.post('/api/fact-check', {
+        query: queryText
       });
       
-      setModerationResult(response.data);
-      setError(null);
-      setInputMode('imageCheck');
-      setIsProcessingImage(false);
+      console.log('Agent API Response:', response.data);
+      
+      setAgentResponse(response.data.result);
+      setAgentVerdict(response.data.verdict);
+      
+      // Handle sources array
+      if (response.data.sources && Array.isArray(response.data.sources)) {
+        setSources(response.data.sources);
+      }
+      
+      // Handle confidence
+      if (response.data.confidence) {
+        setConfidence(response.data.confidence);
+      }
+      
+      setIsAgentLoading(false);
     } catch (err) {
-      setError(err.response ? err.response.data : err.message);
-      setIsProcessingImage(false);
+      console.error('Error fetching agent response:', err);
+      setError(`Failed to get agent response: ${err.message}`);
+      setIsAgentLoading(false);
     }
   };
 
@@ -91,6 +111,10 @@ function App() {
   useEffect(() => {
     if (searchInput === '') {
       setQuery('');
+      setAgentResponse(null);
+      setAgentVerdict(null);
+      setSources([]);
+      setConfidence(null);
     }
   }, [searchInput]);
 
@@ -107,24 +131,24 @@ function App() {
         transition={{ duration: 0.8, delay: 0.1 }}
         className="max-w-6xl mx-auto"
       >
-    <div className="flex items-center justify-center gap-3 mb-2">
-      <motion.img 
-        src="/logo.png" 
-        alt="Anvesha Logo"
-        className="h-12 md:h-16" 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-      />
-      <motion.h1 
-        className="text-4xl md:text-5xl font-bold text-black"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-      >
-        Anvesha
-      </motion.h1>
-    </div>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <motion.img 
+            src="/logo.png" 
+            alt="Anvesha Logo"
+            className="h-12 md:h-16" 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          />
+          <motion.h1 
+            className="text-4xl md:text-5xl font-bold text-black"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          >
+            Anvesha
+          </motion.h1>
+        </div>
 
         <motion.p 
           className="text-lg md:text-xl text-center mb-6 md:mb-8 text-indigo-600"
@@ -141,7 +165,13 @@ function App() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <form onSubmit={handleSearch} className="flex">
+          <form onSubmit={handleSearch} className="flex items-center">
+            <div className="mr-2">
+              <SpeechButton 
+                onTranscriptReceived={handleTranscriptReceived} 
+                disabled={isAgentLoading || isLoading}
+              />
+            </div>
             <div className="relative flex-grow">
               <motion.input
                 whileFocus={{ boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.4)" }}
@@ -198,6 +228,7 @@ function App() {
                   <li>Try searching for controversial topics to see varied fact checks</li>
                   <li>Use the filters to narrow down results by rating</li>
                   <li>Quotes around phrases like "climate change" help find exact matches</li>
+                  <li>Click the microphone icon to search with your voice</li>
                 </ul>
               </motion.div>
             )}
@@ -221,12 +252,28 @@ function App() {
               Text Search
             </motion.button>
             <motion.button
+              whileHover={{ backgroundColor: activeTab === 'voiceAssistant' ? "#e0e7ff" : "#f9fafb" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('voiceAssistant')}
+              className={`flex-1 py-3 px-4 text-center font-medium ${activeTab === 'voiceAssistant' ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              Voice Assistant
+            </motion.button>
+            <motion.button
               whileHover={{ backgroundColor: activeTab === 'imageCheck' ? "#e0e7ff" : "#f9fafb" }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab('imageCheck')}
               className={`flex-1 py-3 px-4 text-center font-medium ${activeTab === 'imageCheck' ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               Image Check
+            </motion.button>
+            <motion.button
+              whileHover={{ backgroundColor: activeTab === 'videoCheck' ? "#e0e7ff" : "#f9fafb" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('videoCheck')}
+              className={`flex-1 py-3 px-4 text-center font-medium ${activeTab === 'videoCheck' ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              Video Check
             </motion.button>
           </div>
           
@@ -241,8 +288,22 @@ function App() {
                   transition={{ duration: 0.3 }}
                 >
                   <p className="text-gray-600 mb-4">
-                    Use the search box above to fact-check a topic or claim.
+                    Use the search box above to fact-check a topic or claim. You can also use voice search by clicking the microphone icon.
                   </p>
+                  
+  
+                </motion.div>
+              )}
+              
+              {activeTab === 'voiceAssistant' && (
+                <motion.div
+                  key="voice-assistant-tab"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <VoiceAssistant />
                 </motion.div>
               )}
               
@@ -254,158 +315,31 @@ function App() {
                   exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div className="border-2 border-dashed border-indigo-200 rounded-lg p-4 text-center mb-4">
-                    <input
-                      type="file"
-                      id="image-upload"
-                      className="hidden"
-                      onChange={handleFileChange}
-                      accept="image/*"
-                    />
-                    <motion.label 
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      htmlFor="image-upload"
-                      className="cursor-pointer block"
-                    >
-                      {selectedFile ? (
-                        <div className="text-indigo-600 mb-2">
-                          {selectedFile.name}
-                          <span className="text-gray-500 text-sm ml-2">
-                            ({(selectedFile.size / 1024).toFixed(1)} KB)
-                          </span>
-                        </div>
-                      ) : (
-                        <div>
-                          <motion.div 
-                            className="text-4xl mb-2"
-                            animate={{ 
-                              rotate: [0, 5, -5, 0],
-                              scale: [1, 1.05, 1]
-                            }}
-                            transition={{ 
-                              duration: 2,
-                              repeat: Infinity,
-                              repeatDelay: 3
-                            }}
-                          >📷</motion.div>
-                          <div className="text-indigo-600 font-medium">Click to upload an image</div>
-                          <div className="text-sm text-gray-500 mt-1">Check if an image is AI-generated or real</div>
-                        </div>
-                      )}
-                    </motion.label>
-                  </div>
-                  
-                  {selectedFile && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="mb-4">
-                        <p className="text-gray-600 text-sm mb-2">Image preview:</p>
-                        <div className="bg-gray-100 rounded-lg p-2 flex justify-center">
-                          <img 
-                            src={URL.createObjectURL(selectedFile)} 
-                            alt="Preview" 
-                            className="max-h-48 rounded"
-                          />
-                        </div>
-                      </div>
-                      
-                      <motion.button
-                        whileHover={{ backgroundColor: isProcessingImage ? "#9ca3af" : "#4338ca" }}
-                        whileTap={{ scale: isProcessingImage ? 1 : 0.98 }}
-                        onClick={handleImageModeration}
-                        disabled={isProcessingImage}
-                        className={`w-full py-2 rounded-lg ${isProcessingImage ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'} text-white transition-colors flex items-center justify-center`}
-                      >
-                        {isProcessingImage ? (
-                          <>
-                            <motion.div 
-                              className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            ></motion.div>
-                            Analyzing Image...
-                          </>
-                        ) : (
-                          <>Check if AI-Generated</>
-                        )}
-                      </motion.button>
-                    </motion.div>
-                  )}
-                  
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg"
-                      >
-                        {error}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  
-                  <AnimatePresence>
-                    {moderationResult && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 100 }}
-                        className="mt-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
-                      >
-                        <h3 className="text-lg font-semibold text-indigo-900 mb-3">Image Analysis Result</h3>
-                        
-                        <div className="mb-4">
-                          <div className="text-sm text-gray-600 mb-1">AI Generated Score:</div>
-                          <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: "0%" }}
-                              animate={{ width: `${(moderationResult.type.ai_generated * 100).toFixed(0)}%` }}
-                              transition={{ duration: 1, type: "spring" }}
-                              className={`h-full ${moderationResult.type.ai_generated > 0.5 ? 'bg-red-500' : 'bg-green-500'}`}
-                            ></motion.div>
-                          </div>
-                          <div className="flex justify-between text-xs mt-1">
-                            <span>0%</span>
-                            <span className="font-medium">{(moderationResult.type.ai_generated * 100).toFixed(2)}%</span>
-                            <span>100%</span>
-                          </div>
-                        </div>
-                        
-                        <motion.div 
-                          initial={{ scale: 0.95, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ delay: 0.5 }}
-                          className={`p-3 rounded-lg text-center font-bold ${
-                            moderationResult.type.ai_generated > 0.5 
-                              ? 'bg-red-100 text-red-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}
-                        >
-                          {moderationResult.type.ai_generated > 0.5 
-                            ? 'This image is likely AI-generated (Fake)' 
-                            : 'This image is likely Real'}
-                        </motion.div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <ImageCheck />
+                </motion.div>
+              )}
+              
+              {activeTab === 'videoCheck' && (
+                <motion.div
+                  key="video-tab"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <VideoCheck />
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </motion.div>
 
-        {query && (
+        {query && filteredClaims && (
           <FilterBar filters={filters} onFilterChange={handleFilterChange} />
         )}
 
         <AnimatePresence>
-          {isLoading ? (
+          {isLoading || isAgentLoading ? (
             <motion.div 
               className="text-center py-8 text-indigo-600 flex flex-col items-center"
               initial={{ opacity: 0 }}
@@ -419,58 +353,75 @@ function App() {
               ></motion.div>
               Analyzing facts...
             </motion.div>
-          ) : query && filteredClaims && filteredClaims.length > 0 ? (
-            <>
-              <StatsSection claims={filteredClaims} />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <motion.div 
-                  className="bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-lg"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4, type: "spring" }}
-                >
-                  <h2 className="text-2xl font-bold mb-4 text-indigo-900">Fact Check Distribution</h2>
-                  <FactGraph data={filteredClaims} />
-                </motion.div>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5, type: "spring" }}
-                >
-                  <FactCheckMeter claims={filteredClaims} />
-                </motion.div>
-              </div>
-              
-              <ClaimsList claims={filteredClaims} />
-            </>
           ) : query ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 100 }}
-              className="text-center py-12 bg-white/80 backdrop-blur-sm rounded-lg shadow-lg"
-            >
-              <motion.div 
-                className="text-6xl mb-4"
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  rotate: [0, 5, -5, 0]
-                }}
-                transition={{ 
-                  duration: 2,
-                  repeat: Infinity,
-                  repeatDelay: 1
-                }}
-              >🔍</motion.div>
-              <h3 className="text-xl font-medium text-gray-700 mb-2">
-                No fact checks found
-              </h3>
-              <p className="text-gray-500">
-                Try a different search term or topic
-              </p>
-            </motion.div>
+            <>
+              {/* Agent Response Component - Added proper props */}
+              <AgentResponse 
+                response={agentResponse} 
+                verdict={agentVerdict} 
+                isLoading={isAgentLoading}
+                sources={sources}
+                confidence={confidence}
+              />
+              
+              {filteredClaims && filteredClaims.length > 0 ? (
+                <>
+                  <StatsSection claims={filteredClaims} />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <motion.div 
+                      className="bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-lg"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4, type: "spring" }}
+                    >
+                      <h2 className="text-2xl font-bold mb-4 text-indigo-900">Fact Check Distribution</h2>
+                      <FactGraph data={filteredClaims} />
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5, type: "spring" }}
+                    >
+                      <FactCheckMeter claims={filteredClaims} />
+                    </motion.div>
+                  </div>
+                  
+                  <ClaimsList claims={filteredClaims} />
+                </>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 100 }}
+                  className="text-center py-12 bg-white/80 backdrop-blur-sm rounded-lg shadow-lg"
+                >
+                  {!agentResponse ? (
+                    <>
+                      <motion.div 
+                        className="text-6xl mb-4"
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 5, -5, 0]
+                        }}
+                        transition={{ 
+                          duration: 2,
+                          repeat: Infinity,
+                          repeatDelay: 1
+                        }}
+                      >🔍</motion.div>
+                      <h3 className="text-xl font-medium text-gray-700 mb-2">
+                        No fact checks found
+                      </h3>
+                      <p className="text-gray-500">
+                        Try a different search term or topic
+                      </p>
+                    </>
+                  ) : null}
+                </motion.div>
+              )}
+            </>
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
@@ -493,7 +444,7 @@ function App() {
                 Choose a fact-checking method above to get started
               </h3>
               <p className="text-gray-500 mt-2">
-                Search by text or check if an image is AI-generated
+                Search by text, use voice search, check if an image is AI-generated, or analyze videos for deepfakes
               </p>
             </motion.div>
           )}
@@ -506,7 +457,34 @@ function App() {
           className="mt-12 text-center text-sm text-gray-500"
         >
           <p>Anvesha Fact-Checking Assistant © {new Date().getFullYear()}</p>
+          <div className="mt-2 flex justify-center space-x-4">
+            <a 
+              href="https://anvesha-fact-checker.azurewebsites.net/docs" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-indigo-500 hover:text-indigo-600 hover:underline"
+            >
+              Anvesha Agent API Docs
+            </a>
+            <a 
+              href="https://speechapi-app.azurewebsites.net/docs" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-indigo-500 hover:text-indigo-600 hover:underline"
+            >
+            Anvesha STT API Docs
+            </a>
+            <a 
+              href="http://deepfake-detection.eastus.azurecontainer.io:8000/docs" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-indigo-500 hover:text-indigo-600 hover:underline"
+            >
+              Anvesha Video Detection Api Docs 
+            </a>
+          </div>
         </motion.footer>
+
       </motion.div>
     </motion.div>
   );
