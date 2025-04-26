@@ -21,7 +21,7 @@ const VoiceAssistant = () => {
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
   
-  const apiBaseUrl = import.meta.env?.VITE_TTS;
+  const apiBaseUrl = 'https://anvesha-fact-checker.azurewebsites.net/';
   
   // Clean up on component unmount
   useEffect(() => {
