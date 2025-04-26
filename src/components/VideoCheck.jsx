@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
 // Define API URL for the deepfake detection
-const DEEPFAKE_API_URL = import.meta.env?.VITE_DEEPFAKE_API_URL;
+const DEEPFAKE_API_URL = "http://deepfake-detection.eastus.azurecontainer.io:8000/api";
 
 const VideoCheck = () => {
   // State variables
